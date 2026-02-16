@@ -1,0 +1,7 @@
+kiteconnect
+redis
+selenium
+webdriver-manager
+pyotp
+flask
+requests
