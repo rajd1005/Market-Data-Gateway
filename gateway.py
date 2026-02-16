@@ -7,14 +7,30 @@ import redis
 from flask import Flask
 from kiteconnect import KiteConnect, KiteTicker
 
-# Import your existing modules
+# --- 🛠️ SELF-HEALING FIX (Creates config.py if missing) ---
+if not os.path.exists("config.py"):
+    print("⚠️ config.py not found! Creating it dynamically...")
+    with open("config.py", "w") as f:
+        f.write('''import os
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+TOTP_SECRET = os.getenv("TOTP_SECRET")
+ZERODHA_USER_ID = os.getenv("ZERODHA_USER_ID")
+ZERODHA_PASSWORD = os.getenv("ZERODHA_PASSWORD")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+''')
+    print("✅ config.py created successfully.")
+
+# NOW we can import it safely
 import config
 import auto_login
 
 # --- CONFIGURATION ---
 REDIS_URL = os.getenv("REDIS_URL")
 if not REDIS_URL:
-    raise ValueError("❌ REDIS_URL is missing! Check Railway Variables.")
+    # Fallback for safety if REDIS_URL is not set
+    REDIS_URL = "redis://localhost:6379"
+    logging.warning("⚠️ REDIS_URL not found, using localhost")
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format='[GATEWAY] %(asctime)s - %(message)s')
@@ -44,8 +60,7 @@ class MarketDataGateway:
     def perform_login(self):
         """
         Uses auto_login.py to capture the token.
-        Selenium will browse to https://rdmdg.up.railway.app?request_token=...
-        and grab the token from the address bar.
+        Selenium will browse to your Railway URL and grab the token from the address bar.
         """
         logging.info("🔄 Starting Auto-Login Sequence...")
         try:
@@ -143,7 +158,7 @@ class MarketDataGateway:
         self.kws.connect(threaded=False)
 
 if __name__ == "__main__":
-    # A. Start the Dummy Web Server (Required for rdmdg.up.railway.app)
+    # A. Start the Dummy Web Server
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
 
